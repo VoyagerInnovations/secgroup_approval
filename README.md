@@ -171,21 +171,21 @@ monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channe
 
 Do the following in AWS Account B:
 
-1. Create a Lambda function named revertSecurityGroup. Use the “LambdaRoleSecurityGroup” role.
+1. Create a Lambda function named revertSecurityGroup. Use the “LambdaRoleSecurityGroup” role.  
+  
+Set-up the following environment variables:  
+slackChannel - secgroup_approve  
+approvalHookUrl - the generated webhook URL for the secgroup_approve channel  
+monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+  
+Make sure to set the timeout to 5 mins.  
 
-Set-up the following environment variables:
-slackChannel - secgroup_approve
-approvalHookUrl - the generated webhook URL for the secgroup_approve channel
-monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel
-
-Make sure to set the timeout to 5 mins.
-
-2. Create a Lambda function named applySecurityGroupChange. Use the “LambdaRoleSecurityGroup” role.
-
-Set-up the following environment variables:
-monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel
-
-Make sure to set the timeout to 5 mins.
+2. Create a Lambda function named applySecurityGroupChange. Use the “LambdaRoleSecurityGroup” role.  
+  
+Set-up the following environment variables:  
+monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+  
+Make sure to set the timeout to 5 mins.  
 
 ### Set-up API Gateway
 
@@ -212,3 +212,72 @@ Under “Actions”, click “Deploy API”.
 Type in “prod” for the Stage name then click “Deploy”.
 
 Take note of the generated Invoke URL. We will be needing this later to set-up our Slack app’s interactive components.
+
+### Set-up Slack App Interactive Components
+
+For the app to be able to post messages into our AWS API Gateway, it needs to have its interactive components enabled. Head over to the "Interactive Components" section of the Slack app and click “Enable Interactive Components”.
+
+Enter the URL of the API Gateway in the Request URL field and click “Enable Interactive Components”.
+
+### Set-up SNS Triggers
+
+We will be using SNS to be able to trigger cross-account Lambda functions.
+
+Go to https://console.aws.amazon.com/sns/home and log in to AWS if you haven’t already. In the left sidebar, click on “Topics”, then “Create new topic”.
+
+Type in the topic name and click on “Create topic”.
+
+Allow other AWS accounts to publish to the topic by editing the topic policy. Click on the ARN on the newly created topic and edit the topic policy.
+
+Select “Only these AWS users” under message publishers and type in the AWS account numbers.
+
+Whenever a message is published to a topic, the appropriate lambda function should be triggered. Click on “Create subscription”.
+
+Choose “AWS Lambda” as the Protocol and select the lambda function to be triggered as the endpoint. Click on “Create subscription”.
+
+In AWS Account A, create the following SNS topics:
+errorHandlerSecurityGroupChange - triggers Lambda function errorHandlerSecurityGroupChange
+securityGroupChange - triggers Lambda function securityGroupChange
+denySecurityGroupChange - triggers Lambda function denySecurityGroupChange
+
+In AWS Account B, create the following SNS topics:
+applySecurityGroupChange - triggers Lambda function applySecurityGroupChange
+
+### Set-up CloudWatch Trigger
+
+We will be using CloudWatch Events to trigger the initial Lambda function (revertSecurityGroup).
+
+Go to https://console.aws.amazon.com/cloudwatch/home and log in to AWS if you haven’t already. In the left sidebar, click on “Rules” under “Events”, then “Create rule”.
+
+Select “Build custom event pattern” and type in the event pattern below:
+
+```
+{
+  "source": [
+    "aws.ec2"
+  ],
+  "detail-type": [
+    "AWS API Call via CloudTrail"
+  ],
+  "detail": {
+    "eventSource": [
+      "ec2.amazonaws.com"
+    ],
+    "eventName": [
+      "AuthorizeSecurityGroupIngress",
+      "RevokeSecurityGroupIngress"
+    ],
+    "userIdentity": {
+      "type": [
+        "IAMUser"
+      ]
+    }
+  }
+}
+```
+
+The event pattern would invoke the target Lambda function whenever an inbound rule is added or removed from a security group by an IAM User.
+
+Click on “Add target”. Select “Lambda function” from the dropdown menu, then select the revertSecurityGroup function. Click on “Configure details”.
+
+Name the rule as “revertSecurityGroup”. Ensure the state is “Enabled” then click “Update rule”.
