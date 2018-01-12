@@ -43,11 +43,42 @@ Any rule add/edit cloudwatch event in AWS account B will trigger a Lambda functi
 
 Once an approver acts on a request by pressing a button, Slack sends an HTTP to an API Gateway in AWS Account A. The API Gateway triggers a Lambda function that would update DynamoDB. If the approver denies the request, the Lambda function would just tag the request as ‘denied’. Otherwise, if the approver approves the request, the Lambda function would tag the request as ‘approved’ and publish to an SNS topic in AWS Account B. The SNS topic in AWS account B will trigger a Lambda function that applies the requested rule changes to the specified security group. If an error occurs (e.g. duplicate rule, non existing rule), the request would be tagged as error.
 
+### Create Slack Channel
+
+We will be creating two Slack channels. One for the approval of the security group request (secgroup_approve) and one for the monitoring of the security group requests (secgroup_monitoring).
+
+In the left sidebar, click the plus icon next to Channels. Use the toggle to decide whether your channel will be public or private. Enter the channel name. Add a purpose to let members know what the channel is about. Select members to invite. Click the invite box to browse a list of teammates, or start typing a name to narrow your search. If you’d like to skip this step, you can always send invitations later. When you’re ready, click Create channel.
+
+### Create a Slack App
+
+Go to https://api.slack.com/apps and log in to your workspace if you haven’t already. Click the “Create New App” button.
+
+Name your app with something descriptive and select your development Slack workspace.
+
+Take note of the Verification Token provided by Slack. Some of our Lambda functions will be needing this token to verify that requests are actually coming from Slack.
+
+### Set-up Slack App Incoming Webhooks
+
+For the app to be able to post messages from external sources into Slack, it needs to have its own associated incoming webhook. Head over to the "Incoming Webhooks" section of the Slack app and activate incoming webhooks.
+
+We will be creating two webhooks. One to post to the approval channel and one to post to the monitoring channel.
+
+Click the “Add New Webhook to Workspace” and authorize the app to post to the two channels.
+
+Take note of the two generated webhook URLs. We will be needing them later.
+
+
 ### Create AWS IAM Role for Lambda
 
 Do the following in AWS Account A and AWS Account B.
 
 Go to https://console.aws.amazon.com/iam/home and log in to AWS if you haven’t already. In the left sidebar, click on “Roles”, then “Create role”.
+
+Choose Lambda under AWS service, then click "Next: Permissions".
+
+Click "Next: Review" without attaching any policy.
+
+Click "Create Role"
 
 Add the following inline policy to the newly created role LambdaRoleSecurityGroup:
 
@@ -113,3 +144,71 @@ Add the following inline policy to the newly created role LambdaRoleSecurityGrou
     ]
 }
 ```
+
+### Enable CloudTrail
+
+If CloudTrail is not yet set up, activate it and feed the logs to CloudWatch using the instructions at https://docs.aws.amazon.com/awscloudtrail/latest/userguide/send-cloudtrail-events-to-cloudwatch-logs.html. Do this in all accounts.
+
+### Set-up DynamoDB
+
+Go to https://console.aws.amazon.com/dynamodb/home and log in to AWS Account A if you haven’t already. Click on “Create table”.
+
+Name the table as “securityGroupRequests” and name the primary key as “requestId” with type string. You may modify the table settings depending on your requirements. Click on “Create”.
+
+### Set-up Lambda Functions
+
+In this scenario, the database storing all requests from multiple AWS accounts will be located in AWS account A. We will be deploying 3 Lambda functions in AWS account A and 2 Lambda functions in AWS account B (or more).
+
+Go to https://console.aws.amazon.com/lambda/home and log in to AWS if you haven’t already. Click on “Create function”.
+
+In AWS Account A, create a Python 2.7 function named “buttonClick”. Use the “LambdaRoleSecurityGroup” role.
+
+Set the timeout to 5 mins and set the memory to 1GB or more. This is to ensure the buttonClick function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).
+
+Set the following environment variables:
+expectedToken - the apps’s Verification Token provided by Slack.
+monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel
+
+Do the following in AWS Account B:
+
+1. Create a Lambda function named revertSecurityGroup. Use the “LambdaRoleSecurityGroup” role.
+
+Set-up the following environment variables:
+slackChannel - secgroup_approve
+approvalHookUrl - the generated webhook URL for the secgroup_approve channel
+monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel
+
+Make sure to set the timeout to 5 mins.
+
+2. Create a Lambda function named applySecurityGroupChange. Use the “LambdaRoleSecurityGroup” role.
+
+Set-up the following environment variables:
+monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel
+
+Make sure to set the timeout to 5 mins.
+
+### Set-up API Gateway
+
+Go to https://console.aws.amazon.com/lambda/home and log in to AWS Account A if you haven’t already. Click on “Create API”.
+
+Name the API as “Slack API” and click on “Create API”.
+
+Click on “Actions” and then “Create Method”.
+
+Select “POST” and click on the check mark.
+
+Select “Lambda Function” for the Integration type and select the buttonClick Lambda Function. Leave the “Use Lambda Proxy Integration” checkbox unchecked. Click “Save”.
+
+Click on “Integration Request”.
+
+Under “Body Mapping Templates”, select “When there are no templates defined”. Click on “Add mapping template”.
+
+Type in “application/x-www-form-urlencoded” as the Content-Type then click the check mark.
+
+Type in {"body": $input.json("$")} as the template then click “Save”
+
+Under “Actions”, click “Deploy API”.
+
+Type in “prod” for the Stage name then click “Deploy”.
+
+Take note of the generated Invoke URL. We will be needing this later to set-up our Slack app’s interactive components.
