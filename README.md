@@ -42,3 +42,74 @@ Any rule add/edit cloudwatch event in AWS account B will trigger a Lambda functi
 ![Approving/Denying Requests Diagram](images/approving_denying_requests.png)
 
 Once an approver acts on a request by pressing a button, Slack sends an HTTP to an API Gateway in AWS Account A. The API Gateway triggers a Lambda function that would update DynamoDB. If the approver denies the request, the Lambda function would just tag the request as ‘denied’. Otherwise, if the approver approves the request, the Lambda function would tag the request as ‘approved’ and publish to an SNS topic in AWS Account B. The SNS topic in AWS account B will trigger a Lambda function that applies the requested rule changes to the specified security group. If an error occurs (e.g. duplicate rule, non existing rule), the request would be tagged as error.
+
+### Create AWS IAM Role for Lambda
+
+Do the following in AWS Account A and AWS Account B.
+
+Go to https://console.aws.amazon.com/iam/home and log in to AWS if you haven’t already. In the left sidebar, click on “Roles”, then “Create role”.
+
+Add the following inline policy to the newly created role LambdaRoleSecurityGroup:
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeSecurityGroups",
+                "ec2:AuthorizeSecurityGroupEgress",
+                "ec2:AuthorizeSecurityGroupIngress",
+                "ec2:RevokeSecurityGroupEgress",
+                "ec2:RevokeSecurityGroupIngress"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:DescribeStream",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:ListStreams"
+            ],
+            "Resource": "arn:aws:dynamodb:*:*:table/securityGroupRequests/stream/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:Scan"
+            ],
+            "Resource": "arn:aws:dynamodb:*:*:table/securityGroupRequests"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sns:*"
+            ],
+            "Resource": [
+                "arn:aws:sns:*:*:applySecurityGroupChange",
+                "arn:aws:sns:*:*:securityGroupChange",
+                "arn:aws:sns:*:*:denySecurityGroupChange"
+            ]
+        }
+    ]
+}
+```
