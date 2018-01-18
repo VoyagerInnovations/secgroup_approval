@@ -80,7 +80,7 @@ Click "Next: Review" without attaching any policy.
 
 Click "Create Role"
 
-Add the following inline policy to the newly created role LambdaRoleSecurityGroup:
+Add the following inline policy to the newly created role *LambdaRoleSecurityGroup*:
 
 ```
 {
@@ -153,39 +153,48 @@ If CloudTrail is not yet set up, activate it and feed the logs to CloudWatch usi
 
 Go to https://console.aws.amazon.com/dynamodb/home and log in to AWS Account A if you haven’t already. Click on “Create table”.
 
-Name the table as “securityGroupRequests” and name the primary key as “requestId” with type string. You may modify the table settings depending on your requirements. Click on “Create”.
+Name the table as *securityGroupRequests* and name the primary key as *requestId* with type string. You may modify the table settings depending on your requirements. Click on “Create”.
 
 ### Set-up Lambda Functions
 
-In this scenario, the database storing all requests from multiple AWS accounts will be located in AWS account A. We will be deploying 3 Lambda functions in AWS account A and 2 Lambda functions in AWS account B (or more).
+In this scenario, the database storing all requests from multiple AWS accounts will be located in AWS account A. We will be deploying 4 Lambda functions in AWS account A and 2 Lambda functions in AWS account B (or more).
 
 Go to https://console.aws.amazon.com/lambda/home and log in to AWS if you haven’t already. Click on “Create function”.
 
-In AWS Account A, create a Python 2.7 function named “buttonClick”. Use the “LambdaRoleSecurityGroup” role.
+We will be using **Python 2.7** runtime for all Lambda functions. Use the *LambdaRoleSecurityGroup* role in all functions. Make sure to set the timeout of all functions to 5 minutes.  
 
-Set the timeout to 5 mins and set the memory to 1GB or more. This is to ensure the buttonClick function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).
+**Do the following in AWS Account A:**
 
-Set the following environment variables:
-expectedToken - the apps’s Verification Token provided by Slack.
-monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel
+1. Create a function named *buttonClick*.  
+  
+ Set the memory to 1GB or more. This is to ensure the *buttonClick* function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).  
+  
+ Set-up the following environment variables:  
+ * expectedToken - the apps’s Verification Token provided by Slack  
+ * monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
 
-Do the following in AWS Account B:
+2. Create a function named *storeSecurityGroupRequest*.
 
-1. Create a Lambda function named revertSecurityGroup. Use the “LambdaRoleSecurityGroup” role.  
+3. Create a function named *errorHandlerSecurityGroupChange*.
+
+4. Create a function named *denySecurityGroupChange*.  
+  
+Set-up the following environment variable:  
+* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+
+**Do the following in AWS Account B:**
+
+1. Create a function named *revertSecurityGroup*.  
   
 Set-up the following environment variables:  
-slackChannel - secgroup_approve  
-approvalHookUrl - the generated webhook URL for the secgroup_approve channel  
-monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
-  
-Make sure to set the timeout to 5 mins.  
+* slackChannel - secgroup_approve  
+* approvalHookUrl - the generated webhook URL for the secgroup_approve channel  
+* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
 
-2. Create a Lambda function named applySecurityGroupChange. Use the “LambdaRoleSecurityGroup” role.  
+2. Create a function named *applySecurityGroupChange*.  
   
 Set-up the following environment variables:  
-monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
-  
-Make sure to set the timeout to 5 mins.  
+* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
 
 ### Set-up API Gateway
 
@@ -236,16 +245,16 @@ Whenever a message is published to a topic, the appropriate lambda function shou
 Choose “AWS Lambda” as the Protocol and select the lambda function to be triggered as the endpoint. Click on “Create subscription”.
 
 In AWS Account A, create the following SNS topics:
-errorHandlerSecurityGroupChange - triggers Lambda function errorHandlerSecurityGroupChange
-securityGroupChange - triggers Lambda function securityGroupChange
-denySecurityGroupChange - triggers Lambda function denySecurityGroupChange
+errorHandlerSecurityGroupChange - triggers Lambda function *errorHandlerSecurityGroupChange*
+securityGroupChange - triggers Lambda function *securityGroupChange*
+denySecurityGroupChange - triggers Lambda function *denySecurityGroupChange*
 
 In AWS Account B, create the following SNS topics:
-applySecurityGroupChange - triggers Lambda function applySecurityGroupChange
+applySecurityGroupChange - triggers Lambda function *applySecurityGroupChange*
 
 ### Set-up CloudWatch Trigger
 
-We will be using CloudWatch Events to trigger the initial Lambda function (revertSecurityGroup).
+We will be using CloudWatch Events to trigger the initial Lambda function (*revertSecurityGroup*).
 
 Go to https://console.aws.amazon.com/cloudwatch/home and log in to AWS if you haven’t already. In the left sidebar, click on “Rules” under “Events”, then “Create rule”.
 
@@ -278,6 +287,6 @@ Select “Build custom event pattern” and type in the event pattern below:
 
 The event pattern would invoke the target Lambda function whenever an inbound rule is added or removed from a security group by an IAM User.
 
-Click on “Add target”. Select “Lambda function” from the dropdown menu, then select the revertSecurityGroup function. Click on “Configure details”.
+Click on “Add target”. Select “Lambda function” from the dropdown menu, then select the *revertSecurityGroup* function. Click on “Configure details”.
 
-Name the rule as “revertSecurityGroup”. Ensure the state is “Enabled” then click “Update rule”.
+Name the rule as *revertSecurityGroup*. Ensure the state is “Enabled” then click “Update rule”.
