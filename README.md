@@ -80,70 +80,8 @@ Click "Next: Review" without attaching any policy.
 
 Click "Create Role"
 
-Add the following inline policy to the newly created role **LambdaRoleSecurityGroup**:
+Add the [inline policy](LambdaRoleSecurityGroup) to the newly created role **LambdaRoleSecurityGroup**:
 
-```
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "ec2:DescribeSecurityGroups",
-                "ec2:AuthorizeSecurityGroupEgress",
-                "ec2:AuthorizeSecurityGroupIngress",
-                "ec2:RevokeSecurityGroupEgress",
-                "ec2:RevokeSecurityGroupIngress"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "dynamodb:DescribeStream",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
-                "dynamodb:ListStreams"
-            ],
-            "Resource": "arn:aws:dynamodb:*:*:table/securityGroupRequests/stream/*"
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "dynamodb:PutItem",
-                "dynamodb:GetItem",
-                "dynamodb:UpdateItem",
-                "dynamodb:Scan"
-            ],
-            "Resource": "arn:aws:dynamodb:*:*:table/securityGroupRequests"
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "sns:*"
-            ],
-            "Resource": [
-                "arn:aws:sns:*:*:applySecurityGroupChange",
-                "arn:aws:sns:*:*:securityGroupChange",
-                "arn:aws:sns:*:*:denySecurityGroupChange"
-            ]
-        }
-    ]
-}
-```
 
 ### Enable CloudTrail
 
@@ -165,7 +103,7 @@ We will be using **Python 2.7** runtime for all Lambda functions. Use the *Lambd
 
 **Do the following in AWS Account A:**
 
-1. Create a function named *buttonClick*.  
+1. Create a function named *[buttonClick](buttonClick.py)*.  
   
 Set the memory to **1GB or more**. This is to ensure the *buttonClick* function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).  
   
@@ -174,21 +112,21 @@ Set-up the following environment variables:
 * **accountAMainRegion** - Region of AWS Account A resources  
 * **accountANumber** - Account Number of AWS Account A  
 
-2. Create a function named *storeSecurityGroupRequest*.
+2. Create a function named *[storeSecurityGroupRequest](storeSecurityGroupRequest.py)*.
 
-3. Create a function named *errorHandlerSecurityGroupChange*.  
+3. Create a function named *[errorHandlerSecurityGroupChange](errorHandlerSecurityGroupChange.py)*.  
   
 Set-up the following environment variable:  
 * **monitoringHookUrl** - the generated webhook URL for the secgroup_monitoring channel  
 
-4. Create a function named *denySecurityGroupChange*.  
+4. Create a function named *[denySecurityGroupChange](denySecurityGroupChange.py)*.  
   
 Set-up the following environment variable:  
 * **monitoringHookUrl** - the generated webhook URL for the secgroup_monitoring channel  
 
 **Do the following in AWS Account B:**
 
-1. Create a function named *revertSecurityGroup*.  
+1. Create a function named *[revertSecurityGroup](revertSecurityGroup.py)*.  
   
 Set-up the following environment variables:  
 * **slackChannel** - secgroup_approve  
@@ -199,7 +137,7 @@ Set-up the following environment variables:
 * **accountBNumber** - Account Number of AWS Account B  
 * **accountBName** - Alias of AWS Account B  
 
-2. Create a function named *applySecurityGroupChange*.  
+2. Create a function named *[applySecurityGroupChange](applySecurityGroupChange.py)*.  
   
 Set-up the following environment variables:  
 * **monitoringHookUrl** - the generated webhook URL for the secgroup_monitoring channel  
@@ -268,32 +206,7 @@ We will be using CloudWatch Events to trigger the initial Lambda function (*reve
 
 Go to https://console.aws.amazon.com/cloudwatch/home and log in to AWS if you haven’t already. In the left sidebar, click on “Rules” under “Events”, then “Create rule”.
 
-Select “Build custom event pattern” and type in the event pattern below:
-
-```
-{
-  "source": [
-    "aws.ec2"
-  ],
-  "detail-type": [
-    "AWS API Call via CloudTrail"
-  ],
-  "detail": {
-    "eventSource": [
-      "ec2.amazonaws.com"
-    ],
-    "eventName": [
-      "AuthorizeSecurityGroupIngress",
-      "RevokeSecurityGroupIngress"
-    ],
-    "userIdentity": {
-      "type": [
-        "IAMUser"
-      ]
-    }
-  }
-}
-```
+Select “Build custom event pattern” and type in the [event pattern](EventPattern):
 
 The event pattern would invoke the target Lambda function whenever an inbound rule is added or removed from a security group by an IAM User.
 
