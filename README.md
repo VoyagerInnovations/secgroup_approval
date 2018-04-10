@@ -255,12 +255,12 @@ Whenever a message is published to a topic, the appropriate lambda function shou
 Choose “AWS Lambda” as the Protocol and select the lambda function to be triggered as the endpoint. Click on “Create subscription”.
 
 In AWS Account A, create the following SNS topics:
-errorHandlerSecurityGroupChange - triggers Lambda function *errorHandlerSecurityGroupChange*
-securityGroupChange - triggers Lambda function *securityGroupChange*
-denySecurityGroupChange - triggers Lambda function *denySecurityGroupChange*
+* **errorHandlerSecurityGroupChange** - triggers Lambda function *errorHandlerSecurityGroupChange*
+* **securityGroupChange** - triggers Lambda function *securityGroupChange*
+* **denySecurityGroupChange** - triggers Lambda function *denySecurityGroupChange*
 
 In AWS Account B, create the following SNS topics:
-applySecurityGroupChange - triggers Lambda function *applySecurityGroupChange*
+* **applySecurityGroupChange** - triggers Lambda function *applySecurityGroupChange*
 
 ### Set-up CloudWatch Trigger
 
