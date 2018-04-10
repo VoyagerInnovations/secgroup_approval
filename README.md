@@ -167,20 +167,26 @@ We will be using **Python 2.7** runtime for all Lambda functions. Use the *Lambd
 
 1. Create a function named *buttonClick*.  
   
- Set the memory to 1GB or more. This is to ensure the *buttonClick* function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).  
+Set the memory to 1GB or more. This is to ensure the *buttonClick* function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).  
   
- Set-up the following environment variables:  
- * expectedToken - the apps’s Verification Token provided by Slack  
- * monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+Set-up the following environment variables:  
+* expectedToken - the apps’s Verification Token provided by Slack  
+* accountAMainRegion - Region of AWS Account A resources  
+* accountANumber - Account Number of AWS Account A  
 
 2. Create a function named *storeSecurityGroupRequest*.
 
-3. Create a function named *errorHandlerSecurityGroupChange*.
+3. Create a function named *errorHandlerSecurityGroupChange*.  
+  
+Set-up the following environment variable:  
+* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
 
 4. Create a function named *denySecurityGroupChange*.  
   
 Set-up the following environment variable:  
 * monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+* accountBNumber - Account Number of AWS Account B  
+* accountBName - Alias of AWS Account B  
 
 **Do the following in AWS Account B:**
 
@@ -190,11 +196,19 @@ Set-up the following environment variables:
 * slackChannel - secgroup_approve  
 * approvalHookUrl - the generated webhook URL for the secgroup_approve channel  
 * monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+* accountAMainRegion - Region of AWS Account A resources  
+* accountANumber - Account Number of AWS Account A  
+* accountBNumber - Account Number of AWS Account B  
+* accountBName - Alias of AWS Account B  
 
 2. Create a function named *applySecurityGroupChange*.  
   
 Set-up the following environment variables:  
 * monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+* accountAMainRegion - Region of AWS Account A resources  
+* accountANumber - Account Number of AWS Account A  
+* accountBNumber - Account Number of AWS Account B  
+* accountBName - Alias of AWS Account B  
 
 ### Set-up API Gateway
 
