@@ -70,7 +70,7 @@ Take note of the two generated webhook URLs. We will be needing them later.
 
 ### Create AWS IAM Role for Lambda
 
-Do the following in AWS Account A and AWS Account B.
+Do the following in **AWS Account A** and **AWS Account B**.
 
 Go to https://console.aws.amazon.com/iam/home and log in to AWS if you haven’t already. In the left sidebar, click on “Roles”, then “Create role”.
 
@@ -80,7 +80,7 @@ Click "Next: Review" without attaching any policy.
 
 Click "Create Role"
 
-Add the following inline policy to the newly created role *LambdaRoleSecurityGroup*:
+Add the following inline policy to the newly created role **LambdaRoleSecurityGroup**:
 
 ```
 {
@@ -151,64 +151,60 @@ If CloudTrail is not yet set up, activate it and feed the logs to CloudWatch usi
 
 ### Set-up DynamoDB
 
-Go to https://console.aws.amazon.com/dynamodb/home and log in to AWS Account A if you haven’t already. Click on “Create table”.
+Go to https://console.aws.amazon.com/dynamodb/home and log in to **AWS Account A** if you haven’t already. Click on “Create table”.
 
-Name the table as *securityGroupRequests* and name the primary key as *requestId* with type string. You may modify the table settings depending on your requirements. Click on “Create”.
+Name the table as **securityGroupRequests** and name the primary key as **requestId** with type string. You may modify the table settings depending on your requirements. Click on “Create”.
 
 ### Set-up Lambda Functions
 
-In this scenario, the database storing all requests from multiple AWS accounts will be located in AWS account A. We will be deploying 4 Lambda functions in AWS account A and 2 Lambda functions in AWS account B (or more).
+In this scenario, the database storing all requests from multiple AWS accounts will be located in **AWS account A**. We will be deploying 4 Lambda functions in **AWS account A** and 2 Lambda functions in **AWS account B** (or more).
 
 Go to https://console.aws.amazon.com/lambda/home and log in to AWS if you haven’t already. Click on “Create function”.
 
-We will be using **Python 2.7** runtime for all Lambda functions. Use the *LambdaRoleSecurityGroup* role in all functions. Make sure to set the timeout of all functions to 5 minutes.  
+We will be using **Python 2.7** runtime for all Lambda functions. Use the *LambdaRoleSecurityGroup* role in all functions. Make sure to set the timeout of all functions to **5 minutes**.  
 
 **Do the following in AWS Account A:**
 
 1. Create a function named *buttonClick*.  
   
-Set the memory to 1GB or more. This is to ensure the *buttonClick* function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).  
+Set the memory to **1GB or more**. This is to ensure the *buttonClick* function sends a response to Slack within 3 seconds (Slack has a timeout of 3 seconds for the HTTP POST reply).  
   
 Set-up the following environment variables:  
-* expectedToken - the apps’s Verification Token provided by Slack  
-* accountAMainRegion - Region of AWS Account A resources  
-* accountANumber - Account Number of AWS Account A  
+* **expectedToken** - the apps’s Verification Token provided by Slack  
+* **accountAMainRegion** - Region of AWS Account A resources  
+* **accountANumber** - Account Number of AWS Account A  
 
 2. Create a function named *storeSecurityGroupRequest*.
 
 3. Create a function named *errorHandlerSecurityGroupChange*.  
   
 Set-up the following environment variable:  
-* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
+* **monitoringHookUrl** - the generated webhook URL for the secgroup_monitoring channel  
 
 4. Create a function named *denySecurityGroupChange*.  
   
 Set-up the following environment variable:  
-* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
-* accountBNumber - Account Number of AWS Account B  
-* accountBName - Alias of AWS Account B  
+* **monitoringHookUrl** - the generated webhook URL for the secgroup_monitoring channel  
 
 **Do the following in AWS Account B:**
 
 1. Create a function named *revertSecurityGroup*.  
   
 Set-up the following environment variables:  
-* slackChannel - secgroup_approve  
-* approvalHookUrl - the generated webhook URL for the secgroup_approve channel  
-* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
-* accountAMainRegion - Region of AWS Account A resources  
-* accountANumber - Account Number of AWS Account A  
-* accountBNumber - Account Number of AWS Account B  
-* accountBName - Alias of AWS Account B  
+* **slackChannel** - secgroup_approve  
+* **approvalHookUrl** - the generated webhook URL for the secgroup_approve channel  
+* **monitoringHookUrl** - the generated webhook URL for the secgroup_monitoring channel  
+* **accountAMainRegion** - Region of AWS Account A resources  
+* **accountANumber** - Account Number of AWS Account A  
+* **accountBNumber** - Account Number of AWS Account B  
+* **accountBName** - Alias of AWS Account B  
 
 2. Create a function named *applySecurityGroupChange*.  
   
 Set-up the following environment variables:  
-* monitoringHookUrl - the generated webhook URL for the secgroup_monitoring channel  
-* accountAMainRegion - Region of AWS Account A resources  
-* accountANumber - Account Number of AWS Account A  
-* accountBNumber - Account Number of AWS Account B  
-* accountBName - Alias of AWS Account B  
+* **monitoringHookUrl** - the generated webhook URL for the secgroup_monitoring channel  
+* **accountAMainRegion** - Region of AWS Account A resources  
+* **accountANumber** - Account Number of AWS Account A  
 
 ### Set-up API Gateway
 
