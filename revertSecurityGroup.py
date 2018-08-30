@@ -134,7 +134,8 @@ def icmptype(fromPort,toPort):
 		type = "Unknown"
 	return type
 	
-def json_builder(item,field1_input,field1_output,field2_input,field2_output):	
+def json_builder(item,field1_input,field1_output,field2_input,field2_output):
+	hasAddDescription = True
 	IpRanges=[]
 	protocol=str(item["ipProtocol"])
 	for ipranges in item[field1_input]["items"]:
@@ -155,6 +156,8 @@ def json_builder(item,field1_input,field1_output,field2_input,field2_output):
 			source = str(ipranges[field2_input]) + " (" + groupName + ")"
 		else:
 			source = str(ipranges[field2_input])
+		if description == "":
+			hasAddDescription = False
 	if protocol == "-1":
 		if description == "":
 			attachment={ "fields": [ { "title": "Protocol", "value": "All Traffic", "short": True }, { "title": "Source", "value": source, "short": True } ], "color": "#f98c3e" }
@@ -186,9 +189,11 @@ def json_builder(item,field1_input,field1_output,field2_input,field2_output):
 	response = []
 	response.append(attachment)
 	response.append(permissions)
+	response.append({"hasAddDescription": hasAddDescription})
 	return response
 		
 def lambda_handler(event, context):
+	hasAddDescription = True
 	print("An unauthorized security group change was detected and will be remediated. The event details are:")
 	print("----------------------")
 	print("Received event: " + json.dumps(event, indent=5))
@@ -239,33 +244,26 @@ def lambda_handler(event, context):
 				field1_output = "IpRanges"
 				field2_input = "cidrIp"
 				field2_output = "CidrIp"
-				response=json_builder(item,field1_input,field1_output,field2_input,field2_output)
-				attachment.append(response[0])
-				permissions.append(response[1])
 			if item["ipv6Ranges"] != {}:
 				field1_input = "ipv6Ranges"
 				field1_output = "Ipv6Ranges"
 				field2_input = "cidrIpv6"
 				field2_output = "CidrIpv6"
-				response=json_builder(item,field1_input,field1_output,field2_input,field2_output)
-				attachment.append(response[0])
-				permissions.append(response[1])
 			if item["prefixListIds"] != {}:
 				field1_input = "prefixListIds"
 				field1_output = "PrefixListIds"
 				field2_input = "prefixListId"
 				field2_output = "PrefixListId"
-				response=json_builder(item,field1_input,field1_output,field2_input,field2_output)
-				attachment.append(response[0])
-				permissions.append(response[1])
 			if item["groups"] !={}:
 				field1_input = "groups"
 				field1_output = "UserIdGroupPairs"
 				field2_input = "groupId"
 				field2_output = "GroupId"
-				response=json_builder(item,field1_input,field1_output,field2_input,field2_output)
-				attachment.append(response[0])
-				permissions.append(response[1])
+			response=json_builder(item,field1_input,field1_output,field2_input,field2_output)
+			attachment.append(response[0])
+			permissions.append(response[1])
+			if response[2]["hasAddDescription"] == False:
+				hasAddDescription = False
 	else:
 		print("An ingress rule change was detected, but not in the expected format. You should debug and find out why. Probably an EC2-Classic call.") 
 		return "An ingress rule change was detected, but not in the expected format. You should debug and find out why. Probably an EC2-Classic call."  
@@ -274,6 +272,7 @@ def lambda_handler(event, context):
 	print("----------------------")
 	print("Permission: " + json.dumps(permissions, indent=5))
 	print("----------------------")
+	print(hasAddDescription)
 	if event["detail"]["eventName"] == "AuthorizeSecurityGroupIngress":
 		remove_rule = ec2.revoke_security_group_ingress(
 		GroupId=group,
@@ -288,17 +287,34 @@ def lambda_handler(event, context):
 		)
 		action = 'remove'
 		button_label = "Approve Remove"
-	monitoring_attachment = list(attachment)
-	monitoring_attachment.append({'text': ':stopwatch: Pending Approval', "color": "#f98c3e" })
-	monitoring_message = {
-		'text': 'Request ID: ' + str(event["detail"]["requestID"]) + '\n*' + str(event["detail"]["userIdentity"]["userName"]) + '* requested to *' + action + '* inbound rule to *' + str(group) + ' (' + str(groupName) + ')* in *' + account + '*',
-		"attachments": monitoring_attachment
-	}
-	attachment.append({"fallback": "You were unable to choose", "callback_id": str(event["detail"]["requestID"]), "color": "#f98c3e", "attachment_type": "default", "actions": [ { "name": "game", "text": button_label, "type": "button", "value": "approve", "style": "primary" }, { "name": "game", "text": "Deny", "type": "button", "value": "deny", "style": "danger" } ] })
-	slack_message = {
-		'text': 'Request ID: ' + str(event["detail"]["requestID"]) + '\n*' + str(event["detail"]["userIdentity"]["userName"]) + '* requested to *' + action + '* inbound rule to *' + str(group) + ' (' + str(groupName) + ')* in *' + account + '*',
-		"attachments": attachment
-	}
+		hasAddDescription = True
+	if hasAddDescription:
+		monitoring_attachment = list(attachment)
+		monitoring_attachment.append({'text': ':stopwatch: Pending Approval', "color": "#f98c3e" })
+		monitoring_message = {
+			'text': 'Request ID: ' + str(event["detail"]["requestID"]) + '\n*' + str(event["detail"]["userIdentity"]["userName"]) + '* requested to *' + action + '* inbound rule to *' + str(group) + ' (' + str(groupName) + ')* in *' + account + '*',
+			"attachments": monitoring_attachment
+		}
+		attachment.append({"fallback": "You were unable to choose", "callback_id": str(event["detail"]["requestID"]), "color": "#f98c3e", "attachment_type": "default", "actions": [ { "name": "game", "text": button_label, "type": "button", "value": "approve", "style": "primary" }, { "name": "game", "text": "Deny", "type": "button", "value": "deny", "style": "danger" } ] })
+		slack_message = {
+			'text': 'Request ID: ' + str(event["detail"]["requestID"]) + '\n*' + str(event["detail"]["userIdentity"]["userName"]) + '* requested to *' + action + '* inbound rule to *' + str(group) + ' (' + str(groupName) + ')* in *' + account + '*',
+			"attachments": attachment
+		}
+	else:
+		color = "#f71818"
+		new_attachment = []
+		for original_attachment_item in attachment:
+			attachment_item = {
+				"color": color,
+				"fields": original_attachment_item["fields"]
+			}
+			new_attachment.append(attachment_item)
+		new_attachment.append({'text': ':x: Auto denied: Each rule must have description', "color": "#f71818" })
+		slack_message = {
+			'text': 'Request ID: ' + str(event["detail"]["requestID"]) + '\n*' + str(event["detail"]["userIdentity"]["userName"]) + '* requested to *' + action + '* inbound rule to *' + str(group) + ' (' + str(groupName) + ')* in *' + account + '*',
+			"attachments": new_attachment
+		}
+		monitoring_message = slack_message
 	req2 = Request(APPROVAL_HOOK_URL, json.dumps(slack_message))
 	print(json.dumps(slack_message))
 	try:
@@ -318,11 +334,12 @@ def lambda_handler(event, context):
 		print("Request failed: " + e.code + " " + e.reason)
 	except URLError as e:
 		print("Server connection failed " + e.reason)
-	sns = boto3.client('sns', region_name='ap-southeast-1')
-	sns.publish(
-		TopicArn="arn:aws:sns:" + ACCOUNT_A_MAIN_REGION + ":" + ACCOUNT_A_NUMBER + ":securityGroupChange",
-		Subject=groupName,
-		Message=json.dumps(event)
-	)
+	if hasAddDescription:
+		sns = boto3.client('sns', region_name='ap-southeast-1')
+		sns.publish(
+			TopicArn="arn:aws:sns:" + ACCOUNT_A_MAIN_REGION + ":" + ACCOUNT_A_NUMBER + ":securityGroupChange",
+			Subject=groupName,
+			Message=json.dumps(event)
+		)
 	print(permissions)
 	return 'success'

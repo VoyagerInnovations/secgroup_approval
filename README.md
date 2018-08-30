@@ -206,7 +206,7 @@ We will be using CloudWatch Events to trigger the initial Lambda function (*reve
 
 Go to https://console.aws.amazon.com/cloudwatch/home and log in to AWS if you haven’t already. In the left sidebar, click on “Rules” under “Events”, then “Create rule”.
 
-Select “Build custom event pattern” and type in the [event pattern](EventPattern):
+Select “Build custom event pattern” and type in the [event pattern](EventPattern).
 
 The event pattern would invoke the target Lambda function whenever an inbound rule is added or removed from a security group by an IAM User.
 
