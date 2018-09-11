@@ -147,13 +147,16 @@ def json_builder(item,field1_input,field1_output,field2_input,field2_output):
 			IpRanges.append({field2_output: str(ipranges[field2_input])})
 		if field1_input == "groups":
 			ec2 = boto3.client('ec2')
-			secGroupDetails = ec2.describe_security_groups(
-				GroupIds=[
-					str(ipranges[field2_input]),
-				]
-			)
-			groupName = secGroupDetails["SecurityGroups"][0]["GroupName"]
-			source = str(ipranges[field2_input]) + " (" + groupName + ")"
+			try:
+				secGroupDetails = ec2.describe_security_groups(
+					GroupIds=[
+						str(ipranges[field2_input]),
+					]
+				)
+				groupName = secGroupDetails["SecurityGroups"][0]["GroupName"]
+				source = str(ipranges[field2_input]) + " (" + groupName + ")"
+			except:
+				source = str(ipranges[field2_input]) + " (Security group is in a peer VPC)"
 		else:
 			source = str(ipranges[field2_input])
 		if description == "":
