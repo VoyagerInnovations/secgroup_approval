@@ -13,7 +13,7 @@ ACCOUNT_A_MAIN_REGION = os.environ['accountAMainRegion']
 ACCOUNT_A_NUMBER = os.environ['accountANumber']
 
 def error_handler(receivedEvent,subject):
-	sns = boto3.client('sns')
+	sns = boto3.client('sns', region_name=ACCOUNT_A_MAIN_REGION)
 	SNS_TOPIC = "arn:aws:sns:" + ACCOUNT_A_MAIN_REGION + ":" + ACCOUNT_A_NUMBER + ":errorHandlerSecurityGroupChange"
 	print(str(subject))
 	message=[]
