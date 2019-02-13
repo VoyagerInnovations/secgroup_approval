@@ -228,6 +228,9 @@ def lambda_handler(event, context):
 	else:
 		print("Change was made by admin")
 		return "Change was made by admin"
+	if "errorMessage" in event["detail"]:
+		print("Error " + event["detail"]["errorMessage"])
+		return "Error " + event["detail"]["errorMessage"]
 	ec2 = boto3.client('ec2')
 	secGroupDetails = ec2.describe_security_groups(
 		GroupIds=[
